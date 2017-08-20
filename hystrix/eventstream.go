@@ -141,7 +141,7 @@ func (sh *StreamHandler) publishMetrics(cb *CircuitBreaker) error {
 	return nil
 }
 
-func (sh *StreamHandler) publishThreadPools(pool *executorPool) error {
+func (sh *StreamHandler) publishThreadPools(pool *bufferedExecutorPool) error {
 	now := time.Now()
 
 	eventBytes, err := json.Marshal(&streamThreadPoolMetric{
@@ -162,8 +162,8 @@ func (sh *StreamHandler) publishThreadPools(pool *executorPool) error {
 		CurrentMaximumPoolSize: uint32(pool.Max),
 
 		RollingStatsWindow:          10000,
-		QueueSizeRejectionThreshold: 0,
-		CurrentQueueSize:            0,
+		QueueSizeRejectionThreshold: uint32(pool.QueueSizeRejectionThreshold),
+		CurrentQueueSize:            uint32(pool.WaitingCount()),
 	})
 	if err != nil {
 		return err

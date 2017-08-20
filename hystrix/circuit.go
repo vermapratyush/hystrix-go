@@ -17,7 +17,7 @@ type CircuitBreaker struct {
 	mutex                  *sync.RWMutex
 	openedOrLastTestedTime int64
 
-	executorPool *executorPool
+	executorPool *bufferedExecutorPool
 	metrics      *metricExchange
 }
 
@@ -70,7 +70,7 @@ func newCircuitBreaker(name string) *CircuitBreaker {
 	c := &CircuitBreaker{}
 	c.Name = name
 	c.metrics = newMetricExchange(name)
-	c.executorPool = newExecutorPool(name)
+	c.executorPool = newBufferedExecutorPool(name)
 	c.mutex = &sync.RWMutex{}
 
 	return c

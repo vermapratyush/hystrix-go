@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"sync/atomic"
 )
 
 func TestSuccess(t *testing.T) {
@@ -120,7 +121,7 @@ func TestTimeoutEmptyFallback(t *testing.T) {
 func TestMaxConcurrent(t *testing.T) {
 	Convey("if a command has max concurrency set to 2", t, func() {
 		defer Flush()
-		ConfigureCommand("", CommandConfig{MaxConcurrentRequests: 2})
+		ConfigureCommand("", CommandConfig{MaxConcurrentRequests: 2, QueueSizeRejectionThreshold: 0, Timeout: 10000})
 		resultChan := make(chan int)
 
 		run := func() error {
@@ -433,6 +434,268 @@ func TestDo(t *testing.T) {
 
 		Convey("the timeout error is returned", func() {
 			So(err.Error(), ShouldEqual, "hystrix: timeout")
+		})
+	})
+}
+
+func TestMaxConcurrencyWithQueue(t *testing.T) {
+	defer Flush()
+
+	Convey("testing for rejected request even when queue is present", t, func() {
+		ConfigureCommand("", CommandConfig{Timeout: 700, QueueSizeRejectionThreshold: 50, MaxConcurrentRequests: 10})
+
+		maxConcurrencyErr := int32(0)
+		timeoutErr := int32(0)
+		success := int32(0)
+		totalExecution := int32(0)
+		completedAll := make(chan struct{})
+		for i := 0; i < 10+50+10; i++ {
+
+			go func() {
+				respChan := make(chan struct{}, 1)
+				errChan := Go("", func() error {
+					time.Sleep(10 * time.Second)
+					respChan <- struct{}{}
+					return nil
+				}, nil)
+
+				var err error
+				select {
+				case err = <-errChan:
+				case _ = <-respChan:
+					err = nil
+				}
+				if err == ErrMaxConcurrency {
+					atomic.AddInt32(&maxConcurrencyErr, 1)
+				} else if err == ErrTimeout {
+					atomic.AddInt32(&timeoutErr, 1)
+				} else if err == nil {
+					atomic.AddInt32(&success, 1)
+				}
+				total := atomic.AddInt32(&totalExecution, 1)
+				if total == 70 {
+					close(completedAll)
+				}
+			}()
+		}
+		Convey("number of max concurrency err is correct", func() {
+			<-completedAll
+			So(success, ShouldEqual, 0)
+			So(timeoutErr, ShouldEqual, 10)
+			So(maxConcurrencyErr, ShouldEqual, 60)
+
+		})
+	})
+}
+
+func TestSuccessMaxConcurrencyWithQueue(t *testing.T) {
+	defer Flush()
+
+	Convey("testing for successful execution and max concurrency even when event was waiting in queue", t, func() {
+		ConfigureCommand("", CommandConfig{Timeout: 1000, QueueSizeRejectionThreshold: 50, MaxConcurrentRequests: 10})
+
+		maxConcurrencyErr := int32(0)
+		timeoutErr := int32(0)
+		success := int32(0)
+		totalExecution := int32(0)
+		completedAll := make(chan struct{})
+		for i := 0; i < 4*10; i++ {
+			go func() {
+				resChan := make(chan *struct{}, 1)
+				errChan := Go("", func() error {
+					time.Sleep(300 * time.Millisecond)
+					resChan <- &struct{}{}
+					return nil
+				}, nil)
+
+				var err error
+				select {
+				case err = <-errChan:
+				case _ = <-resChan:
+					err = nil
+				}
+
+				if err == ErrMaxConcurrency {
+					atomic.AddInt32(&maxConcurrencyErr, 1)
+				} else if err == ErrTimeout {
+					atomic.AddInt32(&timeoutErr, 1)
+				} else if err == nil {
+					atomic.AddInt32(&success, 1)
+				}
+				total := atomic.AddInt32(&totalExecution, 1)
+
+				if total == 40 {
+					close(completedAll)
+				}
+			}()
+		}
+		Convey("number of max concurrency err is correct", func() {
+			<-completedAll
+			So(success, ShouldEqual, 30)
+			So(timeoutErr, ShouldEqual, 0)
+			So(maxConcurrencyErr, ShouldEqual, 10)
+
+		})
+	})
+}
+
+func TestSuccessTimeoutExecutionWithQueue(t *testing.T) {
+	defer Flush()
+
+	Convey("testing for successful execution and timeout even event was waiting in queue", t, func() {
+		ConfigureCommand("", CommandConfig{Timeout: 1000, QueueSizeRejectionThreshold: 50, MaxConcurrentRequests: 25})
+
+		maxConcurrencyErr := int32(0)
+		timeoutErr := int32(0)
+		success := int32(0)
+		totalExecution := int32(0)
+		completedAll := make(chan struct{})
+		for i := 0; i < 4*10; i++ {
+			go func(idx int) {
+				resChan := make(chan *struct{}, 1)
+				errChan := Go("", func() error {
+					if idx < 20 {
+						time.Sleep(2 * time.Second)
+					}
+					time.Sleep(1 * time.Millisecond)
+					resChan <- &struct{}{}
+					return nil
+				}, nil)
+
+				var err error
+				select {
+				case err = <-errChan:
+				case _ = <-resChan:
+					err = nil
+				}
+
+				if err == ErrMaxConcurrency {
+					atomic.AddInt32(&maxConcurrencyErr, 1)
+				} else if err == ErrTimeout {
+					atomic.AddInt32(&timeoutErr, 1)
+				} else if err == nil {
+					atomic.AddInt32(&success, 1)
+				}
+				total := atomic.AddInt32(&totalExecution, 1)
+
+				if total == 40 {
+					close(completedAll)
+				}
+			}(i)
+			time.Sleep(10 * time.Millisecond)
+		}
+		Convey("number of timeout and success is correct", func() {
+			<-completedAll
+			So(success, ShouldEqual, 20)
+			So(timeoutErr, ShouldEqual, 20)
+			So(maxConcurrencyErr, ShouldEqual, 0)
+
+		})
+	})
+}
+
+func TestSuccessTimeoutMaxConnExecutionWithQueue(t *testing.T) {
+	defer Flush()
+
+	Convey("testing for successful execution, timeout, maxConn even event was waiting in queue", t, func() {
+		ConfigureCommand("", CommandConfig{Timeout: 1000, QueueSizeRejectionThreshold: 2, MaxConcurrentRequests: 5})
+
+		maxConcurrencyErr := int32(0)
+		timeoutErr := int32(0)
+		success := int32(0)
+		totalExecution := int32(0)
+		completedAll := make(chan struct{})
+		for i := 0; i < 10; i++ {
+			go func(idx int) {
+				resChan := make(chan *struct{}, 1)
+				errChan := Go("", func() error {
+					if idx == 0 {
+						time.Sleep(2 * time.Second)
+					}
+					time.Sleep(800 * time.Millisecond)
+					resChan <- &struct{}{}
+					return nil
+				}, nil)
+
+				var err error
+				select {
+				case err = <-errChan:
+				case _ = <-resChan:
+					err = nil
+				}
+
+				if err == ErrMaxConcurrency {
+					atomic.AddInt32(&maxConcurrencyErr, 1)
+				} else if err == ErrTimeout {
+					atomic.AddInt32(&timeoutErr, 1)
+				} else if err == nil {
+					atomic.AddInt32(&success, 1)
+				}
+				total := atomic.AddInt32(&totalExecution, 1)
+
+				if total == 10 {
+					close(completedAll)
+				}
+			}(i)
+			time.Sleep(10 * time.Millisecond)
+		}
+		Convey("number of success, timeout maxConn is correct", func() {
+			<-completedAll
+			So(success, ShouldEqual, 4)
+			So(timeoutErr, ShouldEqual, 1)
+			So(maxConcurrencyErr, ShouldEqual, 5)
+		})
+	})
+}
+
+func TestSuccessExecutionDueToQueue(t *testing.T) {
+	defer Flush()
+
+	Convey("testing for successful execution due to queue", t, func() {
+		ConfigureCommand("", CommandConfig{Timeout: 1000, QueueSizeRejectionThreshold: 2, MaxConcurrentRequests: 5})
+
+		maxConcurrencyErr := int32(0)
+		timeoutErr := int32(0)
+		success := int32(0)
+		totalExecution := int32(0)
+		completedAll := make(chan struct{})
+		for i := 0; i < 7; i++ {
+			go func(idx int) {
+				resChan := make(chan *struct{}, 1)
+				errChan := Go("", func() error {
+					time.Sleep(300 * time.Millisecond)
+					resChan <- &struct{}{}
+					return nil
+				}, nil)
+
+				var err error
+				select {
+				case err = <-errChan:
+				case _ = <-resChan:
+					err = nil
+				}
+
+				if err == ErrMaxConcurrency {
+					atomic.AddInt32(&maxConcurrencyErr, 1)
+				} else if err == ErrTimeout {
+					atomic.AddInt32(&timeoutErr, 1)
+				} else if err == nil {
+					atomic.AddInt32(&success, 1)
+				}
+				total := atomic.AddInt32(&totalExecution, 1)
+
+				if total == 7 {
+					close(completedAll)
+				}
+			}(i)
+			time.Sleep(10 * time.Millisecond)
+		}
+		Convey("number of success, timeout maxConn is correct", func() {
+			<-completedAll
+			So(success, ShouldEqual, 7)
+			So(timeoutErr, ShouldEqual, 0)
+			So(maxConcurrencyErr, ShouldEqual, 0)
+
 		})
 	})
 }
