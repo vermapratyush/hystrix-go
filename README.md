@@ -4,7 +4,8 @@ hystrix-go
 [![Build Status](https://travis-ci.org/vermapratyush/hystrix-go.png?branch=master)](https://travis-ci.org/vermapratyush/hystrix-go)
 [![GoDoc Documentation](http://godoc.org/github.com/vermapratyush/hystrix-go/hystrix?status.png)](https://godoc.org/github.com/vermapratyush/hystrix-go/hystrix)
 
-[Hystrix](https://github.com/Netflix/Hystrix) is a great project from Netflix.
+[Hystrix](https://github.com/Netflix/Hystrix) is a great project from Netflix. The original fork of the project seems to have been idle for a while, this is an attempt to improve the quality/features of the hystrix library in go to the level of the Netflix (JAVA) version.
+You can have a look at the [Enhancements](https://github.com/Netflix/Hystrix) that are in pipeline. 
 
 > Hystrix is a latency and fault tolerance library designed to isolate points of access to remote systems, services and 3rd party libraries, stop cascading failure and enable resilience in complex distributed systems where failure is inevitable.
 
