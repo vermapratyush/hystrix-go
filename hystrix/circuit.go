@@ -12,6 +12,7 @@ import (
 // should be attempted, or rejected if the Health of the circuit is too low.
 type CircuitBreaker struct {
 	Name                   string
+	CommandGroup           string
 	open                   bool
 	forceOpen              bool
 	mutex                  *sync.RWMutex
@@ -69,6 +70,7 @@ func Flush() {
 func newCircuitBreaker(name string) *CircuitBreaker {
 	c := &CircuitBreaker{}
 	c.Name = name
+	c.CommandGroup = getSettings(name).CommandGroup
 	c.metrics = newMetricExchange(name)
 	c.executorPool = newBufferedExecutorPool(name)
 	c.mutex = &sync.RWMutex{}

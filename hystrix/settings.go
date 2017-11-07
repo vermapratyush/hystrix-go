@@ -23,6 +23,7 @@ var (
 // Settings Setting for the hystrixCommand
 type Settings struct {
 	Timeout                     time.Duration
+	CommandGroup                string
 	MaxConcurrentRequests       int
 	RequestVolumeThreshold      uint64
 	SleepWindow                 time.Duration
@@ -32,11 +33,12 @@ type Settings struct {
 
 // CommandConfig is used to tune circuit settings at runtime
 type CommandConfig struct {
-	Timeout                int `json:"timeout"`
-	MaxConcurrentRequests  int `json:"max_concurrent_requests"`
-	RequestVolumeThreshold int `json:"request_volume_threshold"`
-	SleepWindow            int `json:"sleep_window"`
-	ErrorPercentThreshold  int `json:"error_percent_threshold"`
+	Timeout                int    `json:"timeout"`
+	CommandGroup           string `json:"command_group"`
+	MaxConcurrentRequests  int    `json:"max_concurrent_requests"`
+	RequestVolumeThreshold int    `json:"request_volume_threshold"`
+	SleepWindow            int    `json:"sleep_window"`
+	ErrorPercentThreshold  int    `json:"error_percent_threshold"`
 	// for more details refer - https://github.com/Netflix/Hystrix/wiki/Configuration#maxqueuesize
 	QueueSizeRejectionThreshold int `json:"queue_size_rejection_threshold"`
 }
@@ -91,8 +93,14 @@ func ConfigureCommand(name string, config CommandConfig) {
 		queueSizeRejectionThreshold = config.QueueSizeRejectionThreshold
 	}
 
+	groupName := name
+	if config.CommandGroup != "" {
+		groupName = config.CommandGroup
+	}
+
 	circuitSettings[name] = &Settings{
 		Timeout:                     time.Duration(timeout) * time.Millisecond,
+		CommandGroup:                groupName,
 		MaxConcurrentRequests:       max,
 		RequestVolumeThreshold:      uint64(volume),
 		SleepWindow:                 time.Duration(sleep) * time.Millisecond,
