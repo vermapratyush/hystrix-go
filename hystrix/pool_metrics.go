@@ -3,7 +3,7 @@ package hystrix
 import (
 	"sync"
 
-	"github.com/vermapratyush/hystrix-go/hystrix/rolling"
+	"github.com/myteksi/hystrix-go/hystrix/rolling"
 )
 
 type bufferedPoolMetrics struct {

@@ -11,10 +11,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/vermapratyush/hystrix-go/hystrix"
-	"github.com/vermapratyush/hystrix-go/hystrix/metric_collector"
-	"github.com/vermapratyush/hystrix-go/plugins"
 	"github.com/cactus/go-statsd-client/statsd"
+	"github.com/myteksi/hystrix-go/hystrix"
+	"github.com/myteksi/hystrix-go/hystrix/metric_collector"
+	"github.com/myteksi/hystrix-go/plugins"
 )
 
 const (

@@ -1,8 +1,8 @@
 hystrix-go
 ==========
 
-[![Build Status](https://travis-ci.org/vermapratyush/hystrix-go.png?branch=master)](https://travis-ci.org/vermapratyush/hystrix-go)
-[![GoDoc Documentation](http://godoc.org/github.com/vermapratyush/hystrix-go/hystrix?status.png)](https://godoc.org/github.com/vermapratyush/hystrix-go/hystrix)
+[![Build Status](https://travis-ci.org/myteksi/hystrix-go.png?branch=master)](https://travis-ci.org/myteksi/hystrix-go)
+[![GoDoc Documentation](http://godoc.org/github.com/myteksi/hystrix-go/hystrix?status.png)](https://godoc.org/github.com/myteksi/hystrix-go/hystrix)
 
 [Hystrix](https://github.com/Netflix/Hystrix) is a great project from Netflix. The original fork of the project seems to have been idle for a while, this is an attempt to improve the quality/features of the hystrix library in go to the level of the Netflix (JAVA) version.
 You can have a look at the [Enhancements](https://github.com/Netflix/Hystrix) that are in pipeline. 
@@ -15,13 +15,13 @@ hystrix-go aims to allow Go programmers to easily build applications with simila
 
 For more about how Hystrix works, refer to the [Java Hystrix wiki](https://github.com/Netflix/Hystrix/wiki)
 
-For API documentation, refer to [GoDoc](https://godoc.org/github.com/vermapratyush/hystrix-go/hystrix)
+For API documentation, refer to [GoDoc](https://godoc.org/github.com/myteksi/hystrix-go/hystrix)
 
 How to use
 ----------
 
 ```go
-import "github.com/vermapratyush/hystrix-go/hystrix"
+import "github.com/myteksi/hystrix-go/hystrix"
 ```
 
 ### Execute code as a Hystrix command
@@ -134,5 +134,5 @@ Build and Test
 - Install vagrant and VirtualBox
 - Clone the hystrix-go repository
 - Inside the hystrix-go directory, run ```vagrant up```, then ```vagrant ssh```
-- ```cd /go/src/github.com/vermapratyush/hystrix-go```
+- ```cd /go/src/github.com/myteksi/hystrix-go```
 - ```go test ./...```
